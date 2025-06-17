@@ -7,7 +7,8 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox, QInputDialog, QButtonGroup, QLineEdit, QFrame
 )
 from PyQt5.QtGui import QPixmap, QPainter, QPen, QFont, QColor, QIcon, QBrush, QPalette
-from PyQt5.QtCore import Qt, QRect, QPoint, QSize, QTimer, QEventLoop, pyqtSignal
+from PyQt5.QtCore import Qt, QRect, QPoint, QSize, QTimer, QEventLoop, pyqtSignal, QUrl
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PIL import ImageGrab, Image
 import math
 try:
@@ -1009,13 +1010,10 @@ class DocCreator(QWidget):
             QMessageBox.warning(self, "Aviso", "Nenhuma etapa para exportar.")
             return
         
+        temp_pdf_path = None
         try:
-            output_path, _ = QFileDialog.getSaveFileName(
-                self, "Salvar PDF", "documentacao.pdf", "Arquivos PDF (*.pdf)"
-            )
-            
-            if not output_path:
-                return
+            # Criar arquivo temporário para pré-visualização
+            temp_pdf_path = os.path.join(os.path.dirname(__file__), 'temp_preview.pdf')
             
             # Criar PDF
             pdf = FPDF()
@@ -1098,14 +1096,37 @@ class DocCreator(QWidget):
                         pdf.set_font('Arial', 'I', 10)
                         pdf.cell(0, 10, f'Erro ao carregar imagem: {str(e)}', 0, 1, 'L')
         
-            # Salvar PDF
-            pdf.output(output_path)
+            # Salvar PDF temporário para pré-visualização
+            pdf.output(temp_pdf_path)
             
-            QMessageBox.information(self, "Sucesso", 
-                                  f"PDF gerado com sucesso!\nSalvo em: {output_path}")
+            # Garantir que o arquivo foi fechado
+            del pdf
+            
+            # Mostrar pré-visualização
+            preview_dialog = PDFPreviewDialog(temp_pdf_path, self)
+            if preview_dialog.exec_() == QDialog.Accepted:
+                # Se o usuário confirmar, solicitar local para salvar
+                output_path, _ = QFileDialog.getSaveFileName(
+                    self, "Salvar PDF", "documentacao.pdf", "Arquivos PDF (*.pdf)"
+                )
+                
+                if output_path:
+                    # Copiar o arquivo temporário para o local escolhido
+                    import shutil
+                    shutil.copy2(temp_pdf_path, output_path)
+                    QMessageBox.information(self, "Sucesso", 
+                                          f"PDF gerado com sucesso!\nSalvo em: {output_path}")
             
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao gerar PDF: {str(e)}")
+        
+        finally:
+            # Limpar arquivo temporário
+            if temp_pdf_path and os.path.exists(temp_pdf_path):
+                try:
+                    os.remove(temp_pdf_path)
+                except:
+                    pass
 
     def save_template(self):
         if not self.steps:
@@ -1233,6 +1254,83 @@ class DocCreator(QWidget):
         if dialog.exec_() == QDialog.Accepted:
             self.doc_title = dialog.title_edit.text()
             self.doc_description = dialog.desc_edit.toPlainText()
+
+class PDFPreviewDialog(QDialog):
+    def __init__(self, pdf_path, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Pré-visualização do PDF")
+        self.setModal(True)
+        self.resize(800, 600)
+        
+        # Configurar estilo moderno
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f5f5f5;
+                font-family: 'Segoe UI', Arial;
+            }
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #0D47A1;
+            }
+        """)
+        
+        # Layout principal
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Visualizador de PDF
+        self.web_view = QWebEngineView()
+        # Converter caminho para URL e garantir que seja absoluto
+        pdf_url = QUrl.fromLocalFile(os.path.abspath(pdf_path))
+        self.web_view.setUrl(pdf_url)
+        layout.addWidget(self.web_view)
+        
+        # Botões
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+        
+        save_button = QPushButton("✅ Salvar")
+        save_button.clicked.connect(self.accept)
+        
+        cancel_button = QPushButton("❌ Cancelar")
+        cancel_button.clicked.connect(self.reject)
+        cancel_button.setStyleSheet("""
+            QPushButton {
+                background-color: #F44336;
+            }
+            QPushButton:hover {
+                background-color: #D32F2F;
+            }
+            QPushButton:pressed {
+                background-color: #B71C1C;
+            }
+        """)
+        
+        button_layout.addStretch()
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(cancel_button)
+        
+        layout.addLayout(button_layout)
+        
+        # Configurar o visualizador para carregar o PDF
+        self.web_view.settings().setAttribute(
+            self.web_view.settings().PluginsEnabled, True
+        )
+        self.web_view.settings().setAttribute(
+            self.web_view.settings().PdfViewerEnabled, True
+        )
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
