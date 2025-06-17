@@ -4,9 +4,9 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QListWidget, QListWidgetItem,
     QLabel, QTextEdit, QFileDialog, QHBoxLayout, QMessageBox, QRubberBand,
     QDesktopWidget, QToolBar, QAction, QColorDialog, QSpinBox, QDialog,
-    QDialogButtonBox, QInputDialog, QButtonGroup, QLineEdit  # Adicionado QLineEdit
+    QDialogButtonBox, QInputDialog, QButtonGroup, QLineEdit, QFrame
 )
-from PyQt5.QtGui import QPixmap, QPainter, QPen, QFont, QColor, QIcon, QBrush
+from PyQt5.QtGui import QPixmap, QPainter, QPen, QFont, QColor, QIcon, QBrush, QPalette
 from PyQt5.QtCore import Qt, QRect, QPoint, QSize, QTimer, QEventLoop, pyqtSignal
 from PIL import ImageGrab, Image
 import math
@@ -58,18 +58,55 @@ class CoverDialog(QDialog):
         self.setWindowTitle("Editar Capa")
         self.setModal(True)
         
+        # Configurar estilo moderno
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f5f5f5;
+                font-family: 'Segoe UI', Arial;
+            }
+            QLabel {
+                color: #424242;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QLineEdit, QTextEdit {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 12px;
+            }
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #0D47A1;
+            }
+        """)
+        
         # Layout principal
         layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
         
         # Título
-        title_label = QLabel("Título:")
+        title_label = QLabel("📑 Título:")
         self.title_edit = QLineEdit(title)
         self.title_edit.setPlaceholderText("Digite o título da documentação")
         layout.addWidget(title_label)
         layout.addWidget(self.title_edit)
         
         # Descrição
-        desc_label = QLabel("Descrição:")
+        desc_label = QLabel("📝 Descrição:")
         self.desc_edit = QTextEdit()
         self.desc_edit.setPlaceholderText("Digite a descrição da documentação")
         self.desc_edit.setText(description)
@@ -78,15 +115,33 @@ class CoverDialog(QDialog):
         layout.addWidget(self.desc_edit)
         
         # Botões
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
-            Qt.Horizontal
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
         
-        self.resize(400, 300)
+        ok_button = QPushButton("✅ Salvar")
+        ok_button.clicked.connect(self.accept)
+        
+        cancel_button = QPushButton("❌ Cancelar")
+        cancel_button.clicked.connect(self.reject)
+        cancel_button.setStyleSheet("""
+            QPushButton {
+                background-color: #F44336;
+            }
+            QPushButton:hover {
+                background-color: #D32F2F;
+            }
+            QPushButton:pressed {
+                background-color: #B71C1C;
+            }
+        """)
+        
+        button_layout.addStretch()
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+        
+        layout.addLayout(button_layout)
+        
+        self.resize(500, 400)
 
 class ImageEditor(QDialog):
     def __init__(self, image_path, parent=None):
@@ -94,6 +149,46 @@ class ImageEditor(QDialog):
         self.image_path = image_path
         self.setWindowTitle("Editor de Imagem")
         self.setModal(True)
+        
+        # Configurar estilo moderno
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f5f5f5;
+                font-family: 'Segoe UI', Arial;
+            }
+            QToolBar {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 4px;
+                spacing: 4px;
+            }
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #0D47A1;
+            }
+            QLabel {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+            }
+            QSpinBox {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 4px;
+            }
+        """)
         
         # Carregar imagem
         self.original_pixmap = QPixmap(image_path)
@@ -106,6 +201,7 @@ class ImageEditor(QDialog):
         self.drawing = False
         self.last_point = QPoint()
         self.start_point = QPoint()
+        self.font_size = 12  # Tamanho padrão da fonte
         
         # Histórico para desfazer
         self.history = [self.edited_pixmap.copy()]
@@ -146,9 +242,29 @@ class ImageEditor(QDialog):
         
     def create_toolbar(self):
         toolbar = QToolBar()
+        toolbar.setMovable(False)
         
         # Grupo de ferramentas
         tool_group = QButtonGroup(self)
+        
+        # Estilo para botões de ferramenta
+        tool_button_style = """
+            QPushButton {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 8px;
+                color: #424242;
+            }
+            QPushButton:checked {
+                background-color: #E3F2FD;
+                border-color: #2196F3;
+                color: #1976D2;
+            }
+            QPushButton:hover {
+                background-color: #F5F5F5;
+            }
+        """
         
         # Ferramenta Caneta
         pen_action = QAction("✏️ Caneta", self)
@@ -191,6 +307,7 @@ class ImageEditor(QDialog):
         # Cor
         color_btn = QPushButton("🎨 Cor")
         color_btn.clicked.connect(self.choose_color)
+        color_btn.setStyleSheet(tool_button_style)
         toolbar.addWidget(color_btn)
         
         # Espessura
@@ -200,6 +317,16 @@ class ImageEditor(QDialog):
         self.width_spin.setValue(3)
         self.width_spin.valueChanged.connect(self.set_pen_width)
         toolbar.addWidget(self.width_spin)
+        
+        # Tamanho da fonte (apenas quando a ferramenta texto está selecionada)
+        toolbar.addSeparator()
+        toolbar.addWidget(QLabel("Tamanho do Texto:"))
+        self.font_size_spin = QSpinBox()
+        self.font_size_spin.setRange(8, 72)
+        self.font_size_spin.setValue(self.font_size)
+        self.font_size_spin.valueChanged.connect(self.set_font_size)
+        self.font_size_spin.setEnabled(False)  # Inicialmente desabilitado
+        toolbar.addWidget(self.font_size_spin)
         
         toolbar.addSeparator()
         
@@ -217,6 +344,8 @@ class ImageEditor(QDialog):
         
     def set_tool(self, tool):
         self.current_tool = tool
+        # Habilitar/desabilitar controle de tamanho da fonte
+        self.font_size_spin.setEnabled(tool == "text")
         
     def choose_color(self):
         color = QColorDialog.getColor(self.pen_color, self)
@@ -225,6 +354,9 @@ class ImageEditor(QDialog):
             
     def set_pen_width(self, width):
         self.pen_width = width
+        
+    def set_font_size(self, size):
+        self.font_size = size
         
     def update_image_display(self):
         # Redimensionar imagem para caber na tela
@@ -363,7 +495,7 @@ class ImageEditor(QDialog):
         if ok and text:
             painter = QPainter(self.edited_pixmap)
             painter.setPen(QPen(self.pen_color))
-            font = QFont("Arial", 12)
+            font = QFont("Segoe UI", self.font_size)
             painter.setFont(font)
             painter.drawText(x, y, text)
             painter.end()
@@ -430,6 +562,13 @@ class RegionSelector(QWidget):
         
         # Mostrar instruções
         self.show_instructions = True
+        
+        # Configurar estilo
+        self.setStyleSheet("""
+            QWidget {
+                font-family: 'Segoe UI', Arial;
+            }
+        """)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -437,7 +576,7 @@ class RegionSelector(QWidget):
         # Desenhar o screenshot
         painter.drawPixmap(self.rect(), self.pixmap)
         
-        # Desenhar overlay escuro
+        # Desenhar overlay escuro com efeito de gradiente
         overlay_color = QColor(0, 0, 0, 100)  # Preto com transparência
         painter.fillRect(self.rect(), overlay_color)
         
@@ -448,17 +587,44 @@ class RegionSelector(QWidget):
             # Desenhar área selecionada sem overlay
             painter.drawPixmap(selection_rect, self.pixmap, selection_rect)
             
-            # Desenhar borda da seleção
-            pen = QPen(QColor(255, 0, 0), 2, Qt.SolidLine)  # Vermelho
+            # Desenhar borda da seleção com efeito de brilho
+            pen = QPen(QColor(33, 150, 243), 2, Qt.SolidLine)  # Azul Material Design
             painter.setPen(pen)
             painter.drawRect(selection_rect)
+            
+            # Desenhar dimensões
+            dimensions = f"{selection_rect.width()} x {selection_rect.height()}"
+            font = QFont("Segoe UI", 10)
+            painter.setFont(font)
+            painter.setPen(QPen(QColor(255, 255, 255)))
+            
+            # Desenhar fundo para o texto
+            text_rect = painter.fontMetrics().boundingRect(dimensions)
+            text_rect.moveTop(selection_rect.top() - text_rect.height() - 5)
+            text_rect.moveLeft(selection_rect.left())
+            painter.fillRect(text_rect, QColor(33, 150, 243, 200))
+            
+            # Desenhar texto
+            painter.drawText(text_rect, Qt.AlignCenter, dimensions)
         
-        # Desenhar instruções
+        # Desenhar instruções com estilo moderno
         if self.show_instructions:
-            painter.setPen(QPen(QColor(255, 255, 255)))  # Branco
-            painter.setFont(QFont("Arial", 14))
+            painter.setPen(QPen(QColor(255, 255, 255)))
+            painter.setFont(QFont("Segoe UI", 14, QFont.Bold))
+            
+            # Desenhar fundo para as instruções
             instruction_text = "Clique e arraste para selecionar uma área da tela. Pressione ESC para cancelar."
-            painter.drawText(20, 30, instruction_text)
+            text_rect = painter.fontMetrics().boundingRect(instruction_text)
+            text_rect.moveTop(20)
+            text_rect.moveLeft(20)
+            text_rect.adjust(-10, -5, 10, 5)  # Adicionar padding
+            
+            # Desenhar fundo com efeito de vidro
+            painter.fillRect(text_rect, QColor(0, 0, 0, 150))
+            painter.drawRect(text_rect)
+            
+            # Desenhar texto
+            painter.drawText(30, 40, instruction_text)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -496,95 +662,211 @@ class DocCreator(QWidget):
         super().__init__()
         self.setWindowTitle("Gerador de Documentação")
         self.steps = []
-        # Adicionar atributos para título e descrição
         self.doc_title = "Documentação de Processo"
         self.doc_description = ""
+        
+        # Configurar estilo moderno
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #f5f5f5;
+                font-family: 'Segoe UI', Arial;
+            }
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #0D47A1;
+            }
+            QListWidget {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #E0E0E0;
+            }
+            QListWidget::item:selected {
+                background-color: #E3F2FD;
+                color: #1976D2;
+            }
+            QTextEdit {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 8px;
+            }
+            QLabel {
+                color: #424242;
+                font-weight: bold;
+            }
+        """)
+        
         self.init_ui()
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(20, 20, 20, 20)
         
         # Layout dos botões
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
         
-        self.add_btn = QPushButton("Adicionar Etapa")
+        # Estilo específico para cada botão
+        button_styles = {
+            "add": "background-color: #4CAF50;",
+            "edit": "background-color: #2196F3;",
+            "delete": "background-color: #F44336;",
+            "pdf": "background-color: #9C27B0;",
+            "save_template": "background-color: #FF9800;",
+            "load_template": "background-color: #795548;",
+            "rename": "background-color: #607D8B;",
+            "edit_cover": "background-color: #673AB7;"
+        }
+        
+        # Criar botões com tamanho mínimo
+        self.add_btn = QPushButton("➕ Adicionar")
+        self.edit_btn = QPushButton("✏️ Editar")
+        self.delete_btn = QPushButton("🗑️ Deletar")
+        self.pdf_btn = QPushButton("📄 PDF")
+        save_template_btn = QPushButton("💾 Salvar")
+        load_template_btn = QPushButton("📂 Carregar")
+        self.rename_btn = QPushButton("✏️ Renomear")
+        edit_cover_btn = QPushButton("📑 Capa")
+        
+        # Aplicar estilos específicos e tamanho mínimo
+        for btn, style in [
+            (self.add_btn, button_styles["add"]),
+            (self.edit_btn, button_styles["edit"]),
+            (self.delete_btn, button_styles["delete"]),
+            (self.pdf_btn, button_styles["pdf"]),
+            (save_template_btn, button_styles["save_template"]),
+            (load_template_btn, button_styles["load_template"]),
+            (self.rename_btn, button_styles["rename"]),
+            (edit_cover_btn, button_styles["edit_cover"])
+        ]:
+            btn.setMinimumWidth(100)  # Definir largura mínima
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    {style}
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    min-width: 100px;
+                }}
+                QPushButton:hover {{
+                    background-color: {style.split(':')[1].strip()[:-1]}CC;
+                }}
+                QPushButton:pressed {{
+                    background-color: {style.split(':')[1].strip()[:-1]}99;
+                }}
+            """)
+        
+        # Conectar sinais
         self.add_btn.clicked.connect(self.add_step)
-        self.add_btn.setStyleSheet("QPushButton { padding: 8px; font-size: 12px; }")
-        
-        self.edit_btn = QPushButton("Editar Imagem")
         self.edit_btn.clicked.connect(self.edit_image)
-        self.edit_btn.setStyleSheet("QPushButton { padding: 8px; font-size: 12px; background-color: #2196F3; color: white; }")
-        
-        self.delete_btn = QPushButton("Deletar Etapa")
         self.delete_btn.clicked.connect(self.delete_step)
-        self.delete_btn.setStyleSheet("QPushButton { padding: 8px; font-size: 12px; }")
-        
-        self.pdf_btn = QPushButton("Gerar PDF")
         self.pdf_btn.clicked.connect(self.generate_pdf)
-        self.pdf_btn.setStyleSheet("QPushButton { padding: 8px; font-size: 12px; background-color: #4CAF50; color: white; }")
-
-        btn_layout.addWidget(self.add_btn)
-        btn_layout.addWidget(self.edit_btn)
-        btn_layout.addWidget(self.delete_btn)
-        btn_layout.addWidget(self.pdf_btn)
-
-        # Adicionar botões de salvar/carregar template
-        save_template_btn = QPushButton("Salvar Template")
         save_template_btn.clicked.connect(self.save_template)
-        save_template_btn.setStyleSheet("QPushButton { padding: 8px; font-size: 12px; background-color: #FF9800; color: white; }")
-
-        load_template_btn = QPushButton("Carregar Template") 
         load_template_btn.clicked.connect(self.load_template)
-        load_template_btn.setStyleSheet("QPushButton { padding: 8px; font-size: 12px; background-color: #9C27B0; color: white; }")
-
-        btn_layout.addWidget(save_template_btn)
-        btn_layout.addWidget(load_template_btn)
-
-        # Lista de etapas
+        self.rename_btn.clicked.connect(self.edit_step_name)
+        edit_cover_btn.clicked.connect(self.edit_cover)
+        
+        # Adicionar botões ao layout com quebra de linha
+        first_row = QHBoxLayout()
+        second_row = QHBoxLayout()
+        
+        # Primeira linha de botões
+        for btn in [self.add_btn, self.edit_btn, self.delete_btn, self.rename_btn]:
+            first_row.addWidget(btn)
+        
+        # Segunda linha de botões
+        for btn in [self.pdf_btn, save_template_btn, load_template_btn, edit_cover_btn]:
+            second_row.addWidget(btn)
+        
+        # Adicionar as duas linhas ao layout principal
+        main_layout.addLayout(first_row)
+        main_layout.addLayout(second_row)
+        
+        # Lista de etapas com estilo moderno
+        steps_label = QLabel("📋 Etapas:")
+        steps_label.setStyleSheet("font-size: 14px; margin-top: 10px;")
+        
         self.step_list = QListWidget()
+        self.step_list.setStyleSheet("""
+            QListWidget {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #E0E0E0;
+            }
+            QListWidget::item:selected {
+                background-color: #E3F2FD;
+                color: #1976D2;
+            }
+        """)
         self.step_list.itemClicked.connect(self.display_step)
         self.step_list.setMaximumHeight(150)
-
-        # Visualização da imagem
+        
+        # Visualização da imagem com estilo moderno
+        image_label = QLabel("🖼️ Imagem:")
+        image_label.setStyleSheet("font-size: 14px; margin-top: 10px;")
+        
         self.image_label = QLabel("Nenhuma imagem selecionada")
         self.image_label.setAlignment(Qt.AlignCenter)
-        self.image_label.setStyleSheet("border: 1px solid gray; min-height: 200px;")
-        self.image_label.setScaledContents(False)
-
-        # Editor de descrição
-        desc_label = QLabel("Descrição da etapa:")
+        self.image_label.setStyleSheet("""
+            QLabel {
+                background-color: white;
+                border: 2px dashed #E0E0E0;
+                border-radius: 4px;
+                padding: 20px;
+                min-height: 200px;
+            }
+        """)
+        
+        # Editor de descrição com estilo moderno
+        desc_label = QLabel("📝 Descrição da etapa:")
+        desc_label.setStyleSheet("font-size: 14px; margin-top: 10px;")
+        
         self.desc_edit = QTextEdit()
         self.desc_edit.setPlaceholderText("Digite a descrição desta etapa...")
         self.desc_edit.textChanged.connect(self.update_description)
         self.desc_edit.setMaximumHeight(100)
-
-        # Adicionar widgets ao layout
-        main_layout.addLayout(btn_layout)
-        main_layout.addWidget(QLabel("Etapas:"))
+        self.desc_edit.setStyleSheet("""
+            QTextEdit {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 8px;
+            }
+        """)
+        
+        # Adicionar widgets ao layout principal
+        main_layout.addWidget(steps_label)
         main_layout.addWidget(self.step_list)
-        main_layout.addWidget(QLabel("Imagem:"))
+        main_layout.addWidget(image_label)
         main_layout.addWidget(self.image_label)
         main_layout.addWidget(desc_label)
         main_layout.addWidget(self.desc_edit)
-
-        # Adicionar botão de editar nome após o botão deletar
-        self.rename_btn = QPushButton("Renomear Etapa")
-        self.rename_btn.clicked.connect(self.edit_step_name)
-        self.rename_btn.setStyleSheet("QPushButton { padding: 8px; font-size: 12px; background-color: #795548; color: white; }")
         
-        btn_layout.addWidget(self.add_btn)
-        btn_layout.addWidget(self.edit_btn)
-        btn_layout.addWidget(self.delete_btn)
-        btn_layout.addWidget(self.rename_btn)  # Novo botão
-        btn_layout.addWidget(self.pdf_btn)        
-
-        # Adicione após os outros botões no método init_ui
-        edit_cover_btn = QPushButton("Editar Capa")
-        edit_cover_btn.clicked.connect(self.edit_cover)
-        edit_cover_btn.setStyleSheet(
-            "QPushButton { padding: 8px; font-size: 12px; background-color: #673AB7; color: white; }"
-        )
-        btn_layout.addWidget(edit_cover_btn)
+        # Configurar tamanho mínimo da janela
+        self.setMinimumSize(800, 700)
 
     def add_step(self):
         try:
